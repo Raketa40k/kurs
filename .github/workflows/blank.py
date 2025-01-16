@@ -1,6 +1,6 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 import random
 
 # Конфигурация типов датчиков
@@ -39,7 +39,7 @@ SENSOR_TYPES = {
     }
 }
 
-def generate_sensor_data(input_min, input_max, output_min, output_max, eror):
+def generate_sensor_data(input_min, input_max, output_min, output_max, error_limit):
     """Генерация данных для датчика"""
     # Создание 6 точек измерения
     input_points = np.linspace(input_min, input_max, 6)
@@ -62,24 +62,24 @@ def generate_sensor_data(input_min, input_max, output_min, output_max, eror):
         backward_error = 100 * abs(backward_output - output_points[i]) / (output_max - output_min)
 
         # Проверка соответствия погрешности
-        if forward_error > eror or backward_error > eror:
+        if forward_error > error_limit or backward_error > error_limit:
             is_suitable = False
 
         # Формирование строки данных
-        row = [
-            f"{input_points[i]:.3f}",
-            f"{output_points[i]:.3f}",
-            f"{forward_output:.3f}",
-            f"{backward_output:.3f}",
-            f"{forward_error:.3f}",
-            f"{backward_error:.3f}"
-        ]
+        row = {
+            "Входное значение": f"{input_points[i]:.3f}",
+            "Выходное значение": f"{output_points[i]:.3f}",
+            "Прямой ход": f"{forward_output:.3f}",
+            "Обратный ход": f"{backward_output:.3f}",
+            "Погрешность прямого хода": f"{forward_error:.3f}",
+            "Погрешность обратного хода": f"{backward_error:.3f}"
+        }
         data.append(row)
 
-    return data, is_suitable
+    return pd.DataFrame(data), is_suitable
 
 def main():
-    st.title("Конфигуратор и Поверка Датчиков")
+    st.title("Поверка и Калибровка Датчиков")
 
     # Sidebar для выбора типа датчика
     st.sidebar.header("Параметры датчика")
@@ -91,9 +91,11 @@ def main():
     # Получение default значений
     sensor_config = SENSOR_TYPES[sensor_type]
 
-    # Входные параметры
+    # Колонки для ввода параметров
     col1, col2 = st.columns(2)
+
     with col1:
+        st.subheader("Входные параметры")
         input_min = st.number_input(
             f"Минимальное входное значение ({sensor_config['default_messure1']})", 
             value=sensor_config['default_input_min'],
@@ -105,8 +107,8 @@ def main():
             step=0.1
         )
 
-    # Выходные параметры
     with col2:
+        st.subheader("Выходные параметры")
         output_min = st.number_input(
             f"Минимальное выходное значение ({sensor_config['default_messure2']})", 
             value=sensor_config['default_output_min'],
@@ -119,7 +121,7 @@ def main():
         )
 
     # Погрешность
-    eror = st.sidebar.number_input(
+    error_limit = st.sidebar.number_input(
         "Предельная погрешность (%)", 
         min_value=0.0, 
         max_value=10.0, 
@@ -128,7 +130,7 @@ def main():
     )
 
     # Кнопка генерации
-    if st.button("Сгенерировать результаты"):
+    if st.button("Выполнить поверку"):
         # Проверки корректности
         if input_min >= input_max:
             st.error("Минимальное входное значение должно быть меньше максимального")
@@ -139,23 +141,10 @@ def main():
             return
 
         # Генерация данных
-        data, is_suitable = generate_sensor_data(
+        df, is_suitable = generate_sensor_data(
             input_min, input_max, 
             output_min, output_max, 
-            eror
-        )
-
-        # Создание DataFrame
-        df = pd.DataFrame(
-            data, 
-            columns=[
-                f"Входное значение ({sensor_config['default_messure1']})", 
-                f"Выходное значение ({sensor_config['default_messure2']})",
-                "Прямой ход", 
-                "Обратный ход",
-                "Погрешность прямого хода",
-                "Погрешность обратного хода"
-            ]
+            error_limit
         )
 
         # Отображение результатов
@@ -163,32 +152,47 @@ def main():
         
         # Статус пригодности
         if is_suitable:
-            st.success("Прибор пригоден к эксплуатации")
+            st.success("Прибор ПРИГОДЕН к эксплуатации")
+            status_color = "green"
         else:
-            st.error("Прибор не пригоден к эксплуатации")
+            st.error("Прибор НЕ ПРИГОДЕН к эксплуатации")
+            status_color = "red"
 
         # Таблица результатов
         st.dataframe(df)
 
+        # Графическое представление погрешностей
+        st.header("Графический анализ")
+        
+        # Создание графика погрешностей
+        chart_data = pd.DataFrame({
+            'Погрешность прямого хода': df['Погрешность прямого хода'].astype(float),
+            'Погрешность обратного хода': df['Погрешность обратного хода'].astype(float)
+        }, index=df['Входное значение'])
+        
+        st.line_chart(chart_data)
+
         # Кнопка экспорта
         csv = df.to_csv(index=False, sep=';')
         st.download_button(
-            label="Скачать результаты (CSV)",
+            label="Скачать отчет (CSV)",
             data=csv,
-            file_name=f'{sensor_type}_results.csv',
+            file_name=f'{sensor_type}_calibration_report.csv',
             mime='text/csv'
         )
 
-        # Графическое представление
-        st.header("Графическое представление")
-        
-        # График погрешностей
-        chart_data = pd.DataFrame({
-            'Прямой ход': df['Погрешность прямого хода'].astype(float),
-            'Обратный ход': df['Погрешность обратного хода'].astype(float)
-        }, index=df[f"Входное значение ({sensor_config['default_messure1']})"])
-        
-        st.line_chart(chart_data)
+    # Справка
+    st.sidebar.header("Справка")
+    with st.sidebar.expander("Инструк ции"):
+        st.write("""
+        1. **Выбор типа датчика**: Выберите тип датчика из выпадающего списка.
+        2. **Входные параметры**: Укажите минимальное и максимальное входные значения.
+        3. **Выходные параметры**: Укажите минимальное и максимальное выходные значения.
+        4. **Погрешность**: Задайте предельную погрешность в процентах.
+        5. **Выполнить поверку**: Нажмите кнопку для генерации результатов.
+        6. **Результаты**: Просмотрите результаты поверки и графический анализ.
+        7. **Экспорт**: Скачайте отчет в формате CSV.
+        """)
 
 if __name__ == "__main__":
     main()

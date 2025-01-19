@@ -73,78 +73,69 @@ if sensor_type:
     st.subheader("Дополнительные параметры")
     eror = st.number_input("Приведенная погрешность (%):", min_value=0.01, value=1.0, step=0.01)
     steps = st.number_input("Количество шагов:", min_value=1, value=5, step=1)
-# Поле для выбора необходимости поверки
-check_verification = st.checkbox("Учитывать прохождение поверки", value=True)
 
-# Кнопка для расчета
-if st.button("Создать конфигурацию"):
-    try:
-        # Проверка корректности данных
-        if input_min >= input_max:
-            raise ValueError("Минимальное входное значение должно быть меньше максимального.")
-        if output_min >= output_max:
-            raise ValueError("Минимальное выходное значение должно быть меньше максимального.")
+    # Кнопка для расчета
+    if st.button("Создать конфигурацию"):
+@@ -84,60 +84,62 @@
+                raise ValueError("Минимальное выходное значение должно быть меньше максимального.")
 
-        # Расчеты
-        delta_input = (input_max - input_min) / steps
-        delta_output = (output_max - output_min) / steps
+            # Расчеты
+            delta_input = (input_max - input_min) / steps
+            delta_output = (output_max - output_min) / steps
 
-        input_values = [input_min + delta_input * i for i in range(steps + 1)]
-        ideal_output = [output_min + delta_output * i for i in range(steps + 1)]
+            input_values = [input_min + delta_input * i for i in range(steps + 1)]
+            ideal_output = [output_min + delta_output * i for i in range(steps + 1)]
 
-        error_values_direct = [random.uniform(-eror, eror) for _ in range(steps + 1)]
-        error_values_reverse = [random.uniform(-eror, eror) for _ in range(steps + 1)]
+            error_values_direct = [random.uniform(-eror, eror) for _ in range(steps + 1)]
+            error_values_reverse = [random.uniform(-eror, eror) for _ in range(steps + 1)]
 
-        measured_output_direct = [
-            ideal + (ideal * err / 100) for ideal, err in zip(ideal_output, error_values_direct)
-        ]
-        measured_output_reverse = [
-            ideal + (ideal * err / 100) for ideal, err in zip(ideal_output, error_values_reverse)
-        ]
+            measured_output_direct = [
+                ideal + (ideal * err / 100) for ideal, err in zip(ideal_output, error_values_direct)
+            ]
+            measured_output_reverse = [
+                ideal + (ideal * err / 100) for ideal, err in zip(ideal_output, error_values_reverse)
+            ]
 
-        direct_errors = [
-            abs((measured - ideal) / (output_max - output_min)) * 100
-            for measured, ideal in zip(measured_output_direct, ideal_output)
-        ]
-        reverse_errors = [
-            abs((measured - ideal) / (output_max - output_min)) * 100
-            for measured, ideal in zip(measured_output_reverse, ideal_output)
-        ]
+            direct_errors = [
+                abs((measured - ideal) / (output_max - output_min)) * 100
+                for measured, ideal in zip(measured_output_direct, ideal_output)
+            ]
+            reverse_errors = [
+                abs((measured - ideal) / (output_max - output_min)) * 100
+                for measured, ideal in zip(measured_output_reverse, ideal_output)
+            ]
 
-        # Создание таблицы результатов
-        data = {
-            f"Идеальное входное значение ({messure1})": input_values,
-            f"Идеальное выходное значение ({messure2})": ideal_output,
-            f"Измеренное значение (прямой ход, {messure2})": measured_output_direct,
-            f"Измеренное значение (обратный ход, {messure2})": measured_output_reverse,
-            "Погрешность (прямой ход, %)": direct_errors,
-            "Погрешность (обратный ход, %)": reverse_errors,
-        }
+            # Создание таблицы результатов
+            data = {
+                f"Идеальное входное значение ({messure1})": input_values,
+                f"Идеальное выходное значение ({messure2})": ideal_output,
+                f"Измеренное значение (прямой ход, {messure2})": measured_output_direct,
+                f"Измеренное значение (обратный ход, {messure2})": measured_output_reverse,
+                "Погрешность (прямой ход, %)": direct_errors,
+                "Погрешность (обратный ход, %)": reverse_errors,
+            }
 
-        results_df = pd.DataFrame(data)
+            results_df = pd.DataFrame(data)
 
-        # Проверка соответствия точности
-        is_valid = all(err <= eror for err in direct_errors + reverse_errors)
+            # Проверка соответствия точности
+            is_valid = all(err <= eror for err in direct_errors + reverse_errors)
 
-        # Отображение результатов
-        st.subheader("Результаты:")
-        st.dataframe(results_df)
+            # Отображение результатов
+            st.subheader("Результаты:")
+            st.dataframe(results_df)
 
-        if check_verification:
             if is_valid:
-                st.success("Прибор соответствует заданной точности и проходит поверку.")
+                st.success("Прибор соответствует заданной точности.")
             else:
-                st.error("Прибор не соответствует заданной точности и не проходит поверку.")
-        else:
-            st.info("Прибор не пригоден.")
+                st.error("Прибор не соответствует заданной точности.")
 
-        # Сохранение результатов в CSV
-        csv = results_df.to_csv(index=False)
-        st.download_button(
-            label="Скачать результаты в CSV",
-            data=csv,
-            file_name="sensor_results.csv",
-            mime="text/csv",
-        )
-    except ValueError as e:
-        st.error(f"Ошибка: {e}")
+            # Сохранение результатов в CSV
+            csv = results_df.to_csv(index=False)
+            st.download_button(
+                label="Скачать результаты в CSV",
+                data=csv,
+                file_name="sensor_results.csv",
+                mime="text/csv",
+            )
+        except ValueError as e:
+            st.error(f"Ошибка: {e}")

@@ -72,7 +72,7 @@ if sensor_type:
 
     st.subheader("Дополнительные параметры")
     eror = st.number_input("Приведенная погрешность (%):", min_value=0.01, value=1.0, step=0.01)
-    steps = st.number_input("Количество шагов:", min_value=1, value=5, step=1)
+
 
     # Кнопка для расчета
     if st.button("Создать конфигурацию"):

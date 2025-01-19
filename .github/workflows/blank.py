@@ -84,8 +84,6 @@ if sensor_type:
                 raise ValueError("Минимальное выходное значение должно быть меньше максимального.")
 
             # Расчеты
-            delta_input = (input_max - input_min) / steps
-            delta_output = (output_max - output_min) / steps
 
             input_values = [input_min + delta_input * i for i in range(steps + 1)]
             ideal_output = [output_min + delta_output * i for i in range(steps + 1)]
